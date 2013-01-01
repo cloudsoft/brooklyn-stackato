@@ -16,7 +16,7 @@ import brooklyn.launcher.BrooklynLauncher
 import brooklyn.location.Location
 import brooklyn.location.basic.LocationRegistry
 import brooklyn.policy.Enricher
-import brooklyn.policy.ResizerPolicy
+import brooklyn.policy.autoscaling.AutoScalerPolicy;
 
 public class WebAppToStackato extends AbstractApplication {
 
@@ -55,10 +55,11 @@ public class WebAppToStackato extends AbstractApplication {
                 public Double compute() { Math.max(cpu, memory) }
             };
         
-            ResizerPolicy resizer = new ResizerPolicy(OUR_FUNCTION).
-                setMetricRange(0.1, 0.75).
-                setSizeRange(1, 4);
-                
+            AutoScalerPolicy resizer = AutoScalerPolicy.builder()
+					.metric(OUR_FUNCTION)
+					.metricRange(0.1, 0.75)
+					.sizeRange(1, 4);
+            
             stackatoWebApp.addEnricher(ourFunction);
             stackatoWebApp.addPolicy(resizer);
         }

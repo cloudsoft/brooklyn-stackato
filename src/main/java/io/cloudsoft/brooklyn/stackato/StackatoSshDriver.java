@@ -6,14 +6,14 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import brooklyn.entity.ConfigKey;
-import brooklyn.entity.basic.lifecycle.StartStopSshDriver;
+import brooklyn.config.ConfigKey;
+import brooklyn.entity.basic.AbstractSoftwareProcessSshDriver;
 import brooklyn.location.basic.SshMachineLocation;
 import brooklyn.location.basic.jclouds.JcloudsLocation.JcloudsSshMachineLocation;
 
 import com.google.common.base.Throwables;
 
-public class StackatoSshDriver extends StartStopSshDriver {
+public class StackatoSshDriver extends AbstractSoftwareProcessSshDriver {
 
     public static final Logger log = LoggerFactory.getLogger(StackatoSshDriver.class);
     

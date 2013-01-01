@@ -17,8 +17,8 @@ import brooklyn.entity.basic.MethodEffector
 import brooklyn.entity.basic.NamedParameter
 import brooklyn.entity.dns.geoscaling.GeoscalingDnsService
 import brooklyn.entity.dns.geoscaling.GeoscalingWebClient
-import brooklyn.entity.group.AbstractController
 import brooklyn.entity.group.DynamicFabric
+import brooklyn.entity.proxy.AbstractController
 import brooklyn.entity.webapp.ElasticJavaWebAppService
 import brooklyn.entity.webapp.WebAppService
 import brooklyn.event.basic.DependentConfiguration

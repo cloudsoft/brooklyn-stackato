@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.SoftwareProcessEntity;
-import brooklyn.entity.basic.lifecycle.StartStopDriver;
 import brooklyn.event.basic.BasicConfigKey;
 import brooklyn.event.basic.DependentConfiguration;
 import brooklyn.location.MachineProvisioningLocation;
@@ -68,9 +67,10 @@ public class StackatoNode extends SoftwareProcessEntity implements StackatoConfi
     }
     
     @Override
-    protected StartStopDriver newDriver(SshMachineLocation loc) {
-        return new StackatoSshDriver(this, loc);
+    public Class getDriverInterface() {
+        return StackatoSshDriver.class;
     }
+
     @Override
     public StackatoSshDriver getDriver() {
         return (StackatoSshDriver) super.getDriver();
