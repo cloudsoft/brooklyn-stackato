@@ -39,7 +39,10 @@ public class StackatoRolloutToCloud extends AbstractApplication {
         
         // start it, and the Brooklyn mgmt console
         StackatoRolloutToCloud app = new StackatoRolloutToCloud();
-        BrooklynLauncher.manage(app, 8081);
+		BrooklynLauncher.newLauncher()
+				.webconsolePort("8081+")
+				.managing(app)
+				.launch();
         app.start([new LocationRegistry().resolve(location)]);
     }
     
