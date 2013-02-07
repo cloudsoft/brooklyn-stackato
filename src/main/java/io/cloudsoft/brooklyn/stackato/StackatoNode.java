@@ -13,9 +13,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import brooklyn.entity.Entity;
+import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.SoftwareProcessEntity;
 import brooklyn.event.basic.BasicConfigKey;
 import brooklyn.event.basic.DependentConfiguration;
+import brooklyn.location.MachineLocation;
 import brooklyn.location.MachineProvisioningLocation;
 import brooklyn.location.NoMachinesAvailableException;
 import brooklyn.location.basic.LocalhostMachineProvisioningLocation;
@@ -23,6 +25,7 @@ import brooklyn.location.basic.SshMachineLocation;
 import brooklyn.location.basic.jclouds.JcloudsLocation;
 import brooklyn.location.basic.jclouds.templates.PortableTemplateBuilder;
 import brooklyn.util.MutableMap;
+import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.flags.SetFromFlag;
 import brooklyn.util.task.BasicTask;
 import brooklyn.util.task.Tasks;
@@ -127,11 +130,11 @@ public class StackatoNode extends SoftwareProcessEntity implements StackatoConfi
         return Arrays.asList(80, 443, 22, 4222, 9022);
     }
     
-    public void startInHpCloud(MachineProvisioningLocation location) {
+    public void startInHpCloud(final MachineProvisioningLocation location) {
         PortableTemplateBuilder template = (PortableTemplateBuilder) new PortableTemplateBuilder().
                 imageNameMatches("ActiveState Stackato v1.2.6 .*").
                 minRam( getConfig(MIN_RAM_MB) );
-        Map flags = MutableMap.builder().
+        final Map flags = MutableMap.builder().
                 put("templateBuilder", template).
                 // we use default for convenience because HP cloud otherwise gets security group explosion!
                 // default should allow everything
@@ -140,24 +143,44 @@ public class StackatoNode extends SoftwareProcessEntity implements StackatoConfi
                 build();
         // username not set here, because we connect as root using key, then switch to using stackato
 
-        SshMachineLocation machine = createInCloud(location, flags);
-        
-        initDriver(machine);
+		setAttribute(PROVISIONING_LOCATION, location);
+        SshMachineLocation machine;
+        try {
+            machine = Tasks.withBlockingDetails("Provisioning machine in "+location, new Callable<SshMachineLocation>() {
+                public SshMachineLocation call() throws NoMachinesAvailableException {
+                    return createInCloud(location, flags);
+                }});
+            if (machine == null) throw new NoMachinesAvailableException(location);
+        } catch (Exception e) {
+            throw Exceptions.propagate(e);
+        }
+
+        // TODO Rewrite so don't rely on driver being created until in startInLocation?
+        // Could get location.obtain() to do the customization perhaps?
+        // And remove duplication from startInAwsUsEast?
+        StackatoSshDriver tempdriver = (StackatoSshDriver) newDriver(machine);
+        //initDriver(machine);
         onMachineReady();
-        getDriver().customizeImage();
+        tempdriver.customizeImage();
         // switch to being this user
         machine.configure(MutableMap.of("username", "stackato"));
         
-        startInLocation(machine);
+		if (log.isDebugEnabled())
+		    log.debug("While starting {}, obtained new location instance {}", this, 
+		            (machine instanceof SshMachineLocation ? 
+		                    machine+", details "+((SshMachineLocation)machine).getUser()+":"+Entities.sanitize(((SshMachineLocation)machine).getConfig()) 
+		                    : machine));
+        
+		startInLocation(machine);
     }
 
-    public void startInAwsUsEast(MachineProvisioningLocation location) {
+    public void startInAwsUsEast(final MachineProvisioningLocation location) {
         PortableTemplateBuilder template = (PortableTemplateBuilder) new PortableTemplateBuilder().
                 imageId("us-east-1/ami-f806a291").  //or:  imageNameMatches(".*stackato-v1.2.6.*")   (but slower and less reliable)
                 // see security group below
 //                options( new TemplateOptions().inboundPorts( ArrayUtils.toPrimitive(getRequiredOpenPorts().toArray(new Integer[0]))) ).
                 minRam( getConfig(MIN_RAM_MB) );
-        Map flags = MutableMap.builder().
+        final Map flags = MutableMap.builder().
                 put("templateBuilder", template).
                 put("callerContext", ""+this).
                 // we require a security group called 'default' with everything open
@@ -167,18 +190,38 @@ public class StackatoNode extends SoftwareProcessEntity implements StackatoConfi
                 put("customCredentials", LoginCredentials.builder().user("stackato").password("stackato").build()).
                 build();
 
-        SshMachineLocation machine = createInCloud(location, flags);
         
-        initDriver(machine);
+		setAttribute(PROVISIONING_LOCATION, location);
+        SshMachineLocation machine;
+        try {
+            machine = Tasks.withBlockingDetails("Provisioning machine in "+location, new Callable<SshMachineLocation>() {
+                public SshMachineLocation call() throws NoMachinesAvailableException {
+                    return createInCloud(location, flags);
+                }});
+            if (machine == null) throw new NoMachinesAvailableException(location);
+        } catch (Exception e) {
+            throw Exceptions.propagate(e);
+        }
+
+        // TODO Rewrite so don't rely on driver being created until in startInLocation?
+        // Could get location.obtain() to do the customization perhaps?
+        StackatoSshDriver tempdriver = (StackatoSshDriver) newDriver(machine);
         onMachineReady();
-        getDriver().customizeImage();
+        tempdriver.customizeImage();
         // this should already be set...
         machine.configure(MutableMap.of("username", "stackato"));
         // clear any password set, since it is no longer valid, and we've switched to key-based login
         machine.configure(MutableMap.of("password", null));
         
-        startInLocation(machine);
+		if (log.isDebugEnabled())
+		    log.debug("While starting {}, obtained new location instance {}", this, 
+		            (machine instanceof SshMachineLocation ? 
+		                    machine+", details "+((SshMachineLocation)machine).getUser()+":"+Entities.sanitize(((SshMachineLocation)machine).getConfig()) 
+		                    : machine));
+        
+		startInLocation(machine);
     }
+    
     // TODO merge commonalities in above two methods
 
     public SshMachineLocation createInCloud(MachineProvisioningLocation location, Map flags) {
@@ -223,7 +266,7 @@ public class StackatoNode extends SoftwareProcessEntity implements StackatoConfi
     
     /** entity assumes machines are correctly configured for login by 'stackato' at this point */
     public void startInLocation(SshMachineLocation machine) {
-        super.startInLocation(machine);
+        super.startInLocation((MachineLocation)machine);
         setAttribute(SERVICE_UP, true);
         log.info("Started Stackato node "+this);
     }
