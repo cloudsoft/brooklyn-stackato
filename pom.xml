@@ -3,7 +3,7 @@
     
     <groupId>io.cloudsoft.brooklyn.stackato</groupId>
     <artifactId>brooklyn-stackato</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
     <packaging>jar</packaging>
     
     <name>Stackato Entities for Brooklyn</name>
